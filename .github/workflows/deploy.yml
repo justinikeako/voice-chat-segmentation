@@ -44,8 +44,8 @@ jobs:
             # 4. Build React frontend
             echo "⚛️ Building React frontend"
             cd frontend
-            npm install
-            npm run build
+            pnpm install
+            pnpm build
             cd ..
 
             # 5. Update the Systemd Service to point to the NEW directory
