@@ -28,4 +28,19 @@ dist-ssr
 *.sln
 *.sw?
 
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
+# Frontend Build & Dependencies
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+
+# Misc
+.DS_Store
+.env
+frontend/package-lock.json

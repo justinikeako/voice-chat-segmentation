@@ -10,4 +10,9 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     tailwindcss(),
   ],
+  build: {
+    outDir: 'build', // Reverts to the old directory name
+    emptyOutDir: true, // Cleans the folder before building
+  },
 })
+
