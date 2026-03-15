@@ -1,0 +1,67 @@
+name: Deploy Kera AI (Swap Method)
+
+on:
+  push:
+    branches:
+      - main
+      - deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/key
+          chmod 600 ~/.ssh/key
+
+      - name: Deploy to Azure VM
+        run: |
+          ssh -i ~/.ssh/key -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
+            
+            # 1. Setup timestamped directory to avoid path conflicts
+            DEPLOY_DIR="deploy_$(date +%s)"
+            echo "🚀 Starting deployment to ~/$DEPLOY_DIR"
+
+            # 2. Clone fresh copy
+            git clone -b deploy https://github.com/your-username/your-repo.git ~/$DEPLOY_DIR
+            cd ~/$DEPLOY_DIR
+
+            # 3. Create fresh VENV (avoids the 203/EXEC path error)
+            echo "🐍 Creating fresh Python environment"
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install -r requirements.txt
+            pip install pymysql gunicorn eventlet
+
+            # 4. Build React frontend
+            echo "⚛️ Building React frontend"
+            cd frontend
+            npm install
+            npm run build
+            cd ..
+
+            # 5. Update the Systemd Service to point to the NEW directory
+            echo "📝 Updating Systemd service path"
+            sudo sed -i "s|WorkingDirectory=.*|WorkingDirectory=/home/${{ secrets.VM_USER }}/$DEPLOY_DIR|" /etc/systemd/system/kera.service
+            sudo sed -i "s|Environment=\"PATH=.*|Environment=\"PATH=/home/${{ secrets.VM_USER }}/$DEPLOY_DIR/venv/bin\"|" /etc/systemd/system/kera.service
+            sudo sed -i "s|ExecStart=.*|ExecStart=/home/${{ secrets.VM_USER }}/$DEPLOY_DIR/venv/bin/gunicorn --worker-class eventlet --workers 1 --bind 127.0.0.1:5000 run:app|" /etc/systemd/system/kera.service
+
+            # 6. Update Nginx to point to the NEW build folder
+            echo "🌐 Updating Nginx root path"
+            sudo sed -i "s|root .*|root /home/${{ secrets.VM_USER }}/$DEPLOY_DIR/frontend/build;|" /etc/nginx/sites-available/kera
+
+            # 7. Apply changes
+            echo "🔁 Reloading services"
+            sudo systemctl daemon-reload
+            sudo systemctl restart kera
+            sudo systemctl restart nginx
+
+            echo "✅ Deployment finished. Running from ~/$DEPLOY_DIR"
+
+          EOF
