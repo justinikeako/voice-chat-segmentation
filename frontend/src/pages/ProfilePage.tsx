@@ -1,18 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-
-const getApiUrl = () => {
-	const saved = localStorage.getItem("VITE_API_URL");
-	if (saved) return saved;
-	const env = process.env.REACT_APP_API_URL;
-	if (env) return env;
-	if (
-		window.location.hostname !== "localhost" &&
-		window.location.hostname !== "127.0.0.1"
-	)
-		return window.location.origin;
-	return "http://127.0.0.1:5000";
-};
+import { getApiUrl } from "../lib/utils";
+import { Container } from "../components/ui/container";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Avatar } from "../components/ui/avatar";
 
 export default function ProfilePage() {
 	const navigate = useNavigate();
@@ -20,16 +12,11 @@ export default function ProfilePage() {
 		queryKey: ["user"],
 		queryFn: async () => {
 			const token = localStorage.getItem("kera_token");
-
 			const res = await fetch(`${getApiUrl()}/api/auth/me`, {
 				headers: { Authorization: `Bearer ${token}` },
 			});
 			const data = await res.json();
-
-			if (!res.ok) {
-				throw new Error(data.error || "Failed to fetch user");
-			}
-
+			if (!res.ok) throw new Error(data.error || "Failed to fetch user");
 			return data?.user as {
 				name: string;
 				email: string;
@@ -49,7 +36,7 @@ export default function ProfilePage() {
 		localStorage.removeItem("kera_user_id");
 		localStorage.removeItem("kera_user_name");
 		localStorage.removeItem("kera_hair_type");
-		navigate("/auth");
+		navigate("/login");
 	};
 
 	const profile = user.data || {
@@ -62,150 +49,80 @@ export default function ProfilePage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-[#F4F2EE]">
-			{/* Header */}
-			<div className="bg-[#1A1A1A] px-6 pt-14 pb-8">
-				<button
-					onClick={() => navigate("/")}
-					className="text-gray-400 text-sm flex items-center gap-1 mb-4 font-semibold"
-				>
-					<svg
-						className="w-4 h-4"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M15 19l-7-7 7-7"
-						/>
-					</svg>
-					Back
-				</button>
+		<Container className="py-6 sm:py-10">
+			{/* Profile header */}
+			<div className="flex items-center gap-4 mb-8">
+				<Avatar name={profile.name} size="xl" />
+				<div>
+					<h1 className="text-2xl font-black uppercase tracking-tight">{profile.name}</h1>
+					{profile.email && (
+						<p className="text-brutal-black/40 text-sm">{profile.email}</p>
+					)}
+				</div>
+			</div>
 
-				<div className="flex items-center gap-4">
-					<div className="w-14 h-14 rounded-full bg-amber-400/20 border-2 border-amber-400/40 flex items-center justify-center">
-						<span className="text-2xl font-black text-amber-400">
-							{(profile.name || "U")[0].toUpperCase()}
-						</span>
-					</div>
-					<div>
-						<h1 className="text-xl font-black text-white">{profile.name}</h1>
-						{profile.email && (
-							<p className="text-gray-400 text-xs">{profile.email}</p>
+			{/* Hair profile */}
+			{profile.hair_type ? (
+				<Card variant="default" padding="md" className="mb-4">
+					<p className="text-[10px] font-black uppercase tracking-widest text-brutal-black/40 mb-4">Hair Profile</p>
+					<div className="grid grid-cols-2 gap-4">
+						<div>
+							<p className="text-xs text-brutal-black/40 font-bold uppercase">Hair Type</p>
+							<p className="text-lg font-black">{profile.hair_type}</p>
+						</div>
+						{profile.porosity && (
+							<div>
+								<p className="text-xs text-brutal-black/40 font-bold uppercase">Porosity</p>
+								<p className="text-lg font-black">{profile.porosity}</p>
+							</div>
+						)}
+						{profile.scalp_condition && (
+							<div>
+								<p className="text-xs text-brutal-black/40 font-bold uppercase">Scalp</p>
+								<p className="text-lg font-black">{profile.scalp_condition}</p>
+							</div>
+						)}
+						{profile.texture && (
+							<div>
+								<p className="text-xs text-brutal-black/40 font-bold uppercase">Texture</p>
+								<p className="text-lg font-black">{profile.texture}</p>
+							</div>
 						)}
 					</div>
-				</div>
-			</div>
-
-			{/* Profile info */}
-			<div className="px-4 pt-5 space-y-3">
-				{profile.hair_type && (
-					<div className="bg-white rounded-2xl p-4 shadow-sm">
-						<p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
-							Hair Profile
-						</p>
-						<div className="grid grid-cols-2 gap-3">
-							<div>
-								<p className="text-xs text-gray-400">Hair Type</p>
-								<p className="text-sm font-black text-gray-900">
-									{profile.hair_type}
-								</p>
-							</div>
-							{profile.porosity && (
-								<div>
-									<p className="text-xs text-gray-400">Porosity</p>
-									<p className="text-sm font-black text-gray-900">
-										{profile.porosity}
-									</p>
-								</div>
-							)}
-							{profile.scalp_condition && (
-								<div>
-									<p className="text-xs text-gray-400">Scalp</p>
-									<p className="text-sm font-black text-gray-900">
-										{profile.scalp_condition}
-									</p>
-								</div>
-							)}
-							{profile.texture && (
-								<div>
-									<p className="text-xs text-gray-400">Texture</p>
-									<p className="text-sm font-black text-gray-900">
-										{profile.texture}
-									</p>
-								</div>
-							)}
-						</div>
-					</div>
-				)}
-
-				{!profile.hair_type && (
-					<div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-						<p className="text-amber-800 text-xs font-semibold">
-							No hair profile yet. Do a scan to get your personalized hair
-							analysis.
-						</p>
-						<button
-							onClick={() => navigate("/scan")}
-							className="mt-3 px-4 py-2 bg-amber-400 text-[#1A1A1A] rounded-xl text-xs font-black"
-						>
-							Start Scan
-						</button>
-					</div>
-				)}
-
-				{/* Account section */}
-				<div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-					<p className="px-4 pt-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
-						Account
+				</Card>
+			) : (
+				<Card variant="highlight" padding="md" className="mb-4">
+					<p className="text-sm font-bold">
+						No hair profile yet. Do a scan to get your personalized hair analysis.
 					</p>
+					<Button size="sm" className="mt-3" onClick={() => navigate("/scan")}>
+						Start Scan
+					</Button>
+				</Card>
+			)}
 
-					<button
-						onClick={() => navigate("/weekly")}
-						className="w-full px-4 py-3.5 flex items-center justify-between border-b border-gray-50 active:bg-gray-50"
-					>
-						<span className="text-sm text-gray-700 font-semibold">
-							Scan History
-						</span>
-						<svg
-							className="w-4 h-4 text-gray-300"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M9 5l7 7-7 7"
-							/>
-						</svg>
-					</button>
-
-					<button
-						onClick={handleLogout}
-						className="w-full px-4 py-3.5 flex items-center justify-between active:bg-red-50"
-					>
-						<span className="text-sm text-red-500 font-semibold">Log Out</span>
-						<svg
-							className="w-4 h-4 text-red-300"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-							/>
-						</svg>
-					</button>
+			{/* Account section */}
+			<Card variant="default" padding="none">
+				<div className="px-4 pt-4 pb-2">
+					<p className="text-[10px] font-black uppercase tracking-widest text-brutal-black/40">Account</p>
 				</div>
-			</div>
-		</div>
+
+				<button
+					onClick={() => navigate("/weekly")}
+					className="w-full px-4 py-4 flex items-center justify-between brutal-border-t hover:bg-brutal-yellow/10 transition-colors cursor-pointer"
+				>
+					<span className="text-sm font-black uppercase tracking-tight">Scan History</span>
+					<span className="text-brutal-black/30">&rarr;</span>
+				</button>
+
+				<button
+					onClick={handleLogout}
+					className="w-full px-4 py-4 flex items-center justify-between brutal-border-t hover:bg-brutal-coral/10 transition-colors cursor-pointer"
+				>
+					<span className="text-sm font-black uppercase tracking-tight text-brutal-coral">Log Out</span>
+					<span className="text-brutal-coral/30">&rarr;</span>
+				</button>
+			</Card>
+		</Container>
 	);
 }

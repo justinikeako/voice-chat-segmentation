@@ -1,161 +1,238 @@
-// frontend/src/pages/AuthPage.jsx
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-const getApiUrl = () => {
-  const saved = localStorage.getItem('VITE_API_URL');
-  if (saved) return saved;
-  const env = process.env.REACT_APP_API_URL;
-  if (env) return env;
-  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') return window.location.origin;
-  return 'http://127.0.0.1:5000';
-};
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { getApiUrl } from "../lib/utils";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Card } from "../components/ui/card";
+import { Container } from "../components/ui/container";
 
 export default function AuthPage() {
-  const navigate = useNavigate();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+	const navigate = useNavigate();
+	const [mode, setMode] = useState<"login" | "signup">("login");
+	const [email, setEmail] = useState("");
+	const [name, setName] = useState("");
+	const [password, setPassword] = useState("");
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState("");
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError('');
+	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+		e.preventDefault();
+		setError("");
 
-    // Client-side validation
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) { setError('Email is required'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) { setError('Please enter a valid email'); return; }
-    if (!password || password.length < 6) { setError('Password must be at least 6 characters'); return; }
-    if (mode === 'signup' && !name.trim()) { setError('Name is required'); return; }
+		const trimmedEmail = email.trim().toLowerCase();
+		if (!trimmedEmail) {
+			setError("Email is required");
+			return;
+		}
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+			setError("Please enter a valid email");
+			return;
+		}
+		if (!password || password.length < 6) {
+			setError("Password must be at least 6 characters");
+			return;
+		}
+		if (mode === "signup" && !name.trim()) {
+			setError("Name is required");
+			return;
+		}
 
-    setLoading(true);
+		setLoading(true);
 
-    const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/signup';
-    const reqBody = mode === 'login'
-      ? { email: trimmedEmail, password }
-      : { email: trimmedEmail, name: name.trim(), password };
+		const endpoint =
+			mode === "login" ? "/api/auth/login" : "/api/auth/signup";
+		const reqBody =
+			mode === "login"
+				? { email: trimmedEmail, password }
+				: { email: trimmedEmail, name: name.trim(), password };
 
-    try {
-      const res = await fetch(`${getApiUrl()}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reqBody),
-      });
-      const data = await res.json();
+		try {
+			const res = await fetch(`${getApiUrl()}${endpoint}`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(reqBody),
+			});
+			const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.error || 'Something went wrong');
-        setLoading(false);
-        return;
-      }
+			if (!res.ok) {
+				setError(data.error || "Something went wrong");
+				setLoading(false);
+				return;
+			}
 
-      // Store auth data
-      localStorage.setItem('kera_token', data.token);
-      localStorage.setItem('kera_user_id', data.user.id);
-      localStorage.setItem('kera_user_name', data.user.name);
-      if (data.user.hair_type) {
-        localStorage.setItem('kera_hair_type', data.user.hair_type);
-      }
+			localStorage.setItem("kera_token", data.token);
+			localStorage.setItem("kera_user_id", data.user.id);
+			localStorage.setItem("kera_user_name", data.user.name);
+			if (data.user.hair_type) {
+				localStorage.setItem("kera_hair_type", data.user.hair_type);
+			}
 
-      navigate('/');
-    } catch (err) {
-      setError('Could not connect to server. Is the backend running?');
-    } finally {
-      setLoading(false);
-    }
-  };
+			navigate("/dashboard");
+		} catch {
+			setError("Could not connect to server. Is the backend running?");
+		} finally {
+			setLoading(false);
+		}
+	};
 
-  return (
-    <div className="min-h-screen bg-[#1A1A1A] flex flex-col items-center justify-center px-6">
-      {/* Logo */}
-      <div className="mb-8 text-center">
-        <div className="w-20 h-20 rounded-full bg-amber-400/20 border-2 border-amber-400/40 mx-auto flex items-center justify-center mb-4">
-          <span className="text-4xl font-black text-amber-400">K</span>
-        </div>
-        <h1 className="text-3xl font-black text-white">Kera <span className="text-amber-400">AI</span></h1>
-        <p className="text-gray-500 text-sm mt-1">Your AI Hair Expert</p>
-      </div>
+	return (
+		<div className="min-h-[70vh] flex items-center justify-center py-12">
+			<Container size="sm">
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+					{/* Left panel — branding */}
+					<Card
+						variant="highlight"
+						padding="lg"
+						className="hidden md:flex flex-col justify-center items-center"
+					>
+						<div className="w-20 h-20 brutal-border bg-brutal-white flex items-center justify-center mb-6">
+							<span className="text-4xl font-black">K</span>
+						</div>
+						<h2 className="text-3xl font-black uppercase tracking-tighter text-center leading-tight">
+							Know Your
+							<br />
+							Hair.
+						</h2>
+						<p className="mt-4 text-sm text-brutal-black/60 text-center max-w-xs">
+							AI-powered hair care built specifically for
+							Afro-Caribbean hair types 3A through 4C.
+						</p>
+					</Card>
 
-      {/* Toggle */}
-      <div className="flex bg-white/5 rounded-2xl p-1 mb-6 w-full max-w-sm">
-        <button
-          onClick={() => { setMode('login'); setError(''); }}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-black tracking-wider transition-all ${
-            mode === 'login' ? 'bg-amber-400 text-[#1A1A1A]' : 'text-gray-400'
-          }`}
-        >
-          Log In
-        </button>
-        <button
-          onClick={() => { setMode('signup'); setError(''); }}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-black tracking-wider transition-all ${
-            mode === 'signup' ? 'bg-amber-400 text-[#1A1A1A]' : 'text-gray-400'
-          }`}
-        >
-          Sign Up
-        </button>
-      </div>
+					{/* Right panel — form */}
+					<Card variant="default" padding="none" className="md:-ml-[3px]">
+						<div className="p-6 sm:p-8">
+							{/* Mobile logo */}
+							<div className="md:hidden text-center mb-6">
+								<div className="w-14 h-14 brutal-border bg-brutal-yellow inline-flex items-center justify-center mb-3">
+									<span className="text-2xl font-black">
+										K
+									</span>
+								</div>
+								<h1 className="text-xl font-black uppercase tracking-tighter">
+									Kera
+									<span className="text-brutal-yellow">
+										.
+									</span>
+									AI
+								</h1>
+							</div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-3">
-        {mode === 'signup' && (
-          <input
-            type="text"
-            placeholder="Your name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-400/50"
-            required
-          />
-        )}
-        <input
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-400/50"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-400/50"
-          required
-          minLength={6}
-        />
+							{/* Mode toggle */}
+							<div className="flex brutal-border mb-6">
+								<button
+									onClick={() => {
+										setMode("login");
+										setError("");
+									}}
+									className={`flex-1 py-3 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer ${
+										mode === "login"
+											? "bg-brutal-yellow"
+											: "bg-brutal-white hover:bg-brutal-black/5"
+									}`}
+								>
+									Log In
+								</button>
+								<button
+									onClick={() => {
+										setMode("signup");
+										setError("");
+									}}
+									className={`flex-1 py-3 text-xs font-black uppercase tracking-wider border-l-3 border-brutal-black transition-colors cursor-pointer ${
+										mode === "signup"
+											? "bg-brutal-yellow"
+											: "bg-brutal-white hover:bg-brutal-black/5"
+									}`}
+								>
+									Sign Up
+								</button>
+							</div>
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-            <p className="text-red-400 text-xs font-bold">{error}</p>
-          </div>
-        )}
+							<form
+								onSubmit={handleSubmit}
+								className="space-y-4"
+							>
+								{mode === "signup" && (
+									<Input
+										type="text"
+										label="Name"
+										placeholder="Your name"
+										value={name}
+										onChange={(e) =>
+											setName(e.target.value)
+										}
+										required
+									/>
+								)}
+								<Input
+									type="email"
+									label="Email"
+									placeholder="you@example.com"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									required
+								/>
+								<Input
+									type="password"
+									label="Password"
+									placeholder="Min 6 characters"
+									value={password}
+									onChange={(e) =>
+										setPassword(e.target.value)
+									}
+									required
+									minLength={6}
+								/>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-4 rounded-2xl bg-amber-400 text-[#1A1A1A] font-black text-sm tracking-wider uppercase disabled:opacity-50 active:scale-[0.98] transition-transform"
-        >
-          {loading ? 'Please wait...' : mode === 'login' ? 'Log In' : 'Create Account'}
-        </button>
-      </form>
+								{error && (
+									<Card
+										variant="coral"
+										padding="sm"
+										className="brutal-shadow-none shadow-none"
+									>
+										<p className="text-xs font-bold">
+											{error}
+										</p>
+									</Card>
+								)}
 
-      {/* Skip for demo */}
-      <button
-        onClick={() => {
-          localStorage.setItem('kera_user_id', '1');
-          localStorage.setItem('kera_user_name', 'Demo User');
-          navigate('/');
-        }}
-        className="mt-6 text-gray-500 text-xs font-bold hover:text-gray-300 transition-colors"
-      >
-        Skip for now (demo mode)
-      </button>
-    </div>
-  );
+								<Button
+									type="submit"
+									disabled={loading}
+									className="w-full"
+									size="lg"
+								>
+									{loading
+										? "Please wait..."
+										: mode === "login"
+											? "Log In"
+											: "Create Account"}
+								</Button>
+							</form>
+
+							<div className="mt-6 text-center">
+								<button
+									onClick={() => {
+										localStorage.setItem(
+											"kera_user_id",
+											"1"
+										);
+										localStorage.setItem(
+											"kera_user_name",
+											"Demo User"
+										);
+										navigate("/dashboard");
+									}}
+									className="text-xs font-black uppercase tracking-wider text-brutal-black/40 hover:text-brutal-black transition-colors cursor-pointer underline underline-offset-4 decoration-1"
+								>
+									Skip — try demo mode
+								</button>
+							</div>
+						</div>
+					</Card>
+				</div>
+			</Container>
+		</div>
+	);
 }
