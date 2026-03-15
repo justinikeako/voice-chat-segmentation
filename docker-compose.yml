@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  kera-ai:
+    build: .
+    container_name: kera-ai
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:///hairscan_dev.db
+      - SECRET_KEY=${SECRET_KEY:-kera-hackathon-secret-2024}
+    volumes:
+      - db-data:/app/instance
+    restart: unless-stopped
+
+volumes:
+  db-data:

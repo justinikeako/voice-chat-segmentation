@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/xampp/htdocs/Kera-AI/frontend/src -type f \\\\\\(-name *.js -o -name *.jsx \\\\\\))",
+      "Bash(find /c/xampp/htdocs/Kera-AI/frontend/src -name *.jsx)",
+      "Bash(grep -r api/ /c/xampp/htdocs/Kera-AI/frontend/src --include=*.jsx)",
+      "Bash(grep -n \"\\\\.catch\" /c/xampp/htdocs/Kera-AI/frontend/src/pages/*.jsx)",
+      "Bash(grep -n \"await fetch\\\\|await axios\" /c/xampp/htdocs/Kera-AI/frontend/src/pages/*.jsx)",
+      "Bash(find /c/xampp/htdocs/Kera-AI -name *.py -type f)"
+    ]
+  }
+}

@@ -40,8 +40,8 @@ def analyse_hair():
                     curl_pattern=analysis_result.get("curl_pattern"),
                     scalp_score=analysis_result.get("scalp_score"),
                     scalp_condition=analysis_result.get("scalp_condition"),
-                    ml_model_prediction=analysis_result["debug_metrics"]["mobilenet_pred"],
-                    ml_confidence=analysis_result["debug_metrics"]["mobilenet_conf"]
+                    ml_model_prediction=analysis_result.get("debug_metrics", {}).get("mobilenet_pred"),
+                    ml_confidence=analysis_result.get("debug_metrics", {}).get("mobilenet_conf")
                 )
                 db.session.add(new_scan)
                 
@@ -56,6 +56,7 @@ def analyse_hair():
         return jsonify({"status": "ok", "data": analysis_result})
 
     except Exception as e:
+        db.session.rollback()
         logging.error(f"[Kera AI] Error in analyse route: {str(e)}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -106,28 +107,30 @@ def live_analyse():
 # ── 2. CHAT ENDPOINT ─────────────────────────────────────────────────────────
 # Also add this import at the TOP of analyse.py:
 # from openai import AzureOpenAI
- 
+# REPLACE the kera_chat() function in app/routes/analyse.py with this version.
+#
+# Changes that reduce latency:
+#   • max_tokens: 200 → 80  (voice answers should be 1-2 sentences max)
+#   • System prompt now instructs Kera to be brief (fewer tokens = faster GPT + faster TTS)
+#   • temperature: 0.7 → 0.5 (slightly more deterministic = faster first token)
+
 @analyse_bp.route('/chat/', methods=['POST'])
-# NOTE: Register this on a SEPARATE blueprint in production.
-# For hackathon speed, adding it here on analyse_bp is fine.
-# Registered at: /api/analyse/chat/ (matches what KeraChatPage.jsx calls: /api/chat/)
-# So ALSO add this to app/__init__.py if you want /api/chat/:
-#   from app.routes.chat import chat_bp
-#   app.register_blueprint(chat_bp, url_prefix='/api/chat')
-# OR just change the URL in KeraChatPage.jsx to: 'http://127.0.0.1:5000/api/analyse/chat/'
 def kera_chat():
     """
     Kera AI conversational endpoint.
-    Receives: { system: str, messages: [{role, content}] }
+    Receives: { system: str, messages: [{role, content}], image: str|None }
     Returns:  { reply: str }
     """
     body = request.get_json()
     if not body:
         return jsonify({"error": "No JSON body"}), 400
- 
-    system_prompt = body.get("system", "You are Kera, an expert hair advisor.")
-    messages      = body.get("messages", [])
-    image         = body.get("image", None) # Expected: data:image/jpeg;base64,...
+
+    system_prompt = body.get(
+        "system",
+        "You are Kera, a concise hair advisor. Reply in 1-2 short sentences only. No lists."
+    )
+    messages = body.get("messages", [])
+    image    = body.get("image", None)
 
     if not messages:
         return jsonify({"error": "No messages"}), 400
@@ -141,31 +144,43 @@ def kera_chat():
 
     try:
         from openai import AzureOpenAI
- 
+
         client = AzureOpenAI(
-            api_key      = os.getenv("AZURE_API_KEY"),
-            api_version  = os.getenv("AZURE_API_VERSION"),
-            azure_endpoint = os.getenv("AZURE_API_BASE")
+            api_key       = os.getenv("AZURE_API_KEY"),
+            api_version   = os.getenv("AZURE_API_VERSION"),
+            azure_endpoint= os.getenv("AZURE_API_BASE")
         )
         deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-5-chat")
- 
+
+        # ── Voice-optimised: brief system prompt + low token cap ──────────────
+        # 80 tokens ≈ 2 short sentences, plenty for a voice answer.
+        # Fewer tokens = GPT returns faster AND TTS has less audio to generate.
         response = client.chat.completions.create(
             model=deployment,
             messages=[
-                {"role": "system", "content": system_prompt},
+                {
+                    "role": "system",
+                    "content": (
+                        "You are Kera AI, a friendly hair expert. "
+                        "The user is talking to you via voice on their phone camera. "
+                        "ALWAYS reply in 1-2 short spoken sentences. "
+                        "Never use bullet points, markdown, or lists. "
+                        "Be warm, direct, and specific."
+                    )
+                },
                 *messages
             ],
-            max_tokens=300,
-            temperature=0.7
+            max_tokens=80,
+            temperature=0.5
         )
- 
+
         reply = response.choices[0].message.content.strip()
+        logging.info(f"[Kera AI Chat] Reply: {reply[:60]}...")
         return jsonify({"reply": reply})
- 
+
     except Exception as e:
         logging.error(f"[Kera AI Chat] Error: {e}")
-        return jsonify({"reply": "Sorry, I'm having trouble connecting right now. Please try again in a moment!"}), 200
- 
+        return jsonify({"error": str(e)}), 500
  
 # ============================================================
 # ALSO ADD TO app/routes/analyse.py at the very top:
@@ -192,3 +207,46 @@ def kera_chat():
 # <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
 #
 # ============================================================
+
+
+# ADD THIS to app/routes/analyse.py
+# (paste anywhere in the file, before the last line)
+#
+# Also make sure these are at the top of analyse.py:
+#   import os, requests, logging
+#   from flask import Blueprint, request, jsonify
+#
+# This endpoint lets the React frontend get a short-lived Azure Speech token
+# so the Speech SDK works on http://localhost without CORS or key-exposure issues.
+# Tokens last 10 minutes — the frontend fetches a fresh one on each mic enable.
+
+@analyse_bp.route('/speech-token', methods=['GET'])
+def get_speech_token():
+    """
+    Returns a short-lived Azure Cognitive Services token for the Speech SDK.
+    The SDK uses this instead of the raw subscription key, which bypasses
+    browser CORS restrictions on http://localhost.
+    """
+    import requests as req
+
+    speech_key    = os.getenv('AZURE_SPEECH_KEY')
+    speech_region = os.getenv('AZURE_SPEECH_REGION', 'eastus')
+
+    if not speech_key:
+        return jsonify({'error': 'AZURE_SPEECH_KEY not set in .env'}), 500
+
+    try:
+        token_url = f'https://{speech_region}.api.cognitive.microsoft.com/sts/v1.0/issueToken'
+        response  = req.post(
+            token_url,
+            headers={'Ocp-Apim-Subscription-Key': speech_key},
+            timeout=5
+        )
+        response.raise_for_status()
+        return jsonify({
+            'token':  response.text,
+            'region': speech_region
+        })
+    except Exception as e:
+        logging.error(f'[Kera AI] Speech token error: {e}')
+        return jsonify({'error': str(e)}), 500

@@ -1,45 +1,119 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import ScanPage from './pages/ScanPage';
-import ChatPage from './pages/ChatPage';
-import ResultsPage from './pages/ResultsPage';
+// frontend/src/App.jsx
+// All routes wired: Auth, Home, Scan, Results, Chat, Weekly, Shop, InStore, Learn
+import React from "react";
+import {
+	BrowserRouter as Router,
+	Routes,
+	Route,
+	Navigate,
+} from "react-router-dom";
 
-function BottomNav() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  if (location.pathname === '/scan') return null;
-  const active = location.pathname;
-  const items = [
-    { path: '/', icon: '🏠', label: 'Home' },
-    { path: '/scan', icon: '📡', label: 'Scan' },
-    { path: '/chat', icon: '💬', label: 'Chat' },
-  ];
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-50">
-      <div className="flex justify-around max-w-md mx-auto">
-        {items.map(item => (
-          <button key={item.path} onClick={() => navigate(item.path)}
-            className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl ${active === item.path ? 'text-amber-500' : 'text-gray-400'}`}>
-            <span className={`text-xl ${item.path === '/scan' ? 'text-2xl -mt-3 bg-kera-dark w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg' : ''}`}>{item.icon}</span>
-            <span className="text-[9px] font-black tracking-wider uppercase">{item.label}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+import AuthPage from "./pages/AuthPage";
+import HomePage from "./pages/HomePage";
+import ScanPage from "./pages/ScanPage";
+import ResultsPage from "./pages/ResultsPage";
+import KeraChatPage from "./pages/KeraChatPage";
+import WeeklyCheckPage from "./pages/WeeklyCheckPage";
+import ShopPage from "./pages/ShopPage";
+import InStorePage from "./pages/InStorePage";
+import LearnPage from "./pages/LearnPage";
+import ProfilePage from "./pages/ProfilePage";
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+	const token = localStorage.getItem("kera_token");
+	const userId = localStorage.getItem("kera_user_id");
+	// Allow access if they have a token OR a user_id (demo mode)
+	if (!token && !userId) {
+		return <Navigate to="/auth" replace />;
+	}
+	return children;
 }
 
 export default function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/scan" element={<ScanPage />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/results" element={<ResultsPage />} />
-      </Routes>
-      <BottomNav />
-    </Router>
-  );
+	return (
+		<Router>
+			<Routes>
+				{/* Auth */}
+				<Route path="/auth" element={<AuthPage />} />
+
+				{/* Protected Routes */}
+				<Route
+					path="/"
+					element={
+						<RequireAuth>
+							<HomePage />
+						</RequireAuth>
+					}
+				/>
+				<Route
+					path="/scan"
+					element={
+						<RequireAuth>
+							<ScanPage />
+						</RequireAuth>
+					}
+				/>
+				<Route
+					path="/results"
+					element={
+						<RequireAuth>
+							<ResultsPage />
+						</RequireAuth>
+					}
+				/>
+				<Route
+					path="/chat"
+					element={
+						<RequireAuth>
+							<KeraChatPage />
+						</RequireAuth>
+					}
+				/>
+				<Route
+					path="/weekly"
+					element={
+						<RequireAuth>
+							<WeeklyCheckPage />
+						</RequireAuth>
+					}
+				/>
+				<Route
+					path="/shop"
+					element={
+						<RequireAuth>
+							<ShopPage />
+						</RequireAuth>
+					}
+				/>
+				<Route
+					path="/instore"
+					element={
+						<RequireAuth>
+							<InStorePage />
+						</RequireAuth>
+					}
+				/>
+				<Route
+					path="/learn"
+					element={
+						<RequireAuth>
+							<LearnPage />
+						</RequireAuth>
+					}
+				/>
+				<Route
+					path="/profile"
+					element={
+						<RequireAuth>
+							<ProfilePage />
+						</RequireAuth>
+					}
+				/>
+				<Route path="/remedies" element={<Navigate to="/shop" replace />} />
+
+				{/* Catch-all */}
+				<Route path="*" element={<Navigate to="/" replace />} />
+			</Routes>
+		</Router>
+	);
 }
