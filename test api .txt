@@ -1,0 +1,9 @@
+python seed.py
+
+then run 
+
+
+
+curl.exe -X POST http://127.0.0.1:5000/api/analyse/ `
+  -F "image=@test_hair.jpg" `
+  -F "user_id=1"

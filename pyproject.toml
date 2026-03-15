@@ -1,0 +1,9 @@
+[project]
+name = "stage-3-voice-chat-segmentation"
+version = "0.1.0"
+description = "Voice Chat Segmentation"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+app = "wsgi:app"
