@@ -29,7 +29,7 @@ jobs:
             echo "🚀 Starting deployment to ~/$DEPLOY_DIR"
 
             # 2. Clone fresh copy
-            git clone -b deploy https://github.com/your-username/your-repo.git ~/$DEPLOY_DIR
+            git clone -b deploy https://github.com/justinikeako/voice-chat-segmentation.git ~/$DEPLOY_DIR
             cd ~/$DEPLOY_DIR
 
             # 3. Create fresh VENV (avoids the 203/EXEC path error)
